@@ -1,7 +1,7 @@
 import { BuildOptions, Model } from "sequelize";
 
 export interface ReservationsAttributes {
-  id: number;
+  id?: number;
   title: string;
   location:string;
   startDate: Date;

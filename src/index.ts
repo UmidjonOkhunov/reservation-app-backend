@@ -2,8 +2,8 @@ import fastify, {FastifyInstance} from "fastify";
 import fastifyBlipp from "fastify-blipp";
 import { Server, IncomingMessage, ServerResponse } from "http";
 import {findAll, findById, reserve, deleteById, update} from "./modules/routes/status";
-// import findRoutes from "./modules/routes/find";
 import { dbConfig } from "./models";
+
 
 const server: FastifyInstance<
   Server,
@@ -11,6 +11,7 @@ const server: FastifyInstance<
   ServerResponse
 > = fastify();
 
+server.register(require('fastify-cors'))
 server.register(fastifyBlipp);
 server.register(findAll);
 server.register(findById);
@@ -20,7 +21,7 @@ server.register(update);
 
 const start = async () => {
   try {
-    await server.listen(3000, "0.0.0.0");
+    await server.listen(3001, "0.0.0.0");
     server.blipp();
   } catch (err) {
     console.log(err);

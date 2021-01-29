@@ -39,6 +39,24 @@ export const findById = fp(async (server:any, opts:any, next:any) => {
   next();
 });
 
+const overlaps = async(body: { startDate: Date; endDate: Date; })=>{
+  const { Op } = require("sequelize");
+  const output = await Reservations.findOne({where: {
+    [Op.or]: [{
+    [Op.and]: [
+      { startDate: {[Op.gte]: body.startDate} },
+      { endDate: {[Op.lte]: body.startDate} }
+    ]},
+    {
+      [Op.and]: [
+        { startDate: {[Op.gte]: body.endDate} },
+        { startDate: {[Op.lte]: body.startDate} }
+      ]
+    }]
+  }})
+
+  return output
+}
 
 export const reserve = fp(async (server:any, opts:any, next:any) => {
   server.route({
@@ -47,28 +65,16 @@ export const reserve = fp(async (server:any, opts:any, next:any) => {
     method: ["POST"],
     handler: async (request: any, reply: any ) => {
       try{
-        // console.log(request.body)
-        const body = JSON.parse(request.body);
-        const { Op } = require("sequelize");
-        const overlaps = Reservations.findOne({where: {
-          [Op.or]: [{
-          [Op.and]: [
-            { startDate: {[Op.gte]: body.startDate} },
-            { endDate: {[Op.lte]: body.startDate} }
-          ]},
-          {
-            [Op.and]: [
-              { startDate: {[Op.gte]: body.endDate} },
-              { startDate: {[Op.lte]: body.startDate} }
-            ]
-          }]
-        }})
-
-        if (overlaps){
+        // const body = JSON.parse(request.body);
+        
+        // Check whether the reservation time overlaps
+        const overl = await overlaps(request.body);
+        if (overl){
           request.log.error("The reservation time is overlapping");
           return reply.send(400);
         }
-        const reservation = await Reservations.create(body);
+        
+        const reservation = await Reservations.create(request.body);
 
         return reply.code(201).send(JSON.stringify(reservation, null, 2));
 
@@ -98,6 +104,7 @@ export const deleteById = fp(async (server:any, opts:any, next:any) => {
   next();
 });
 
+
 export const update = fp(async (server:any, opts:any, next:any) => {
   server.route({
     url: "/status/:id",
@@ -105,8 +112,15 @@ export const update = fp(async (server:any, opts:any, next:any) => {
     method: ["PUT","PATCH"],
     handler: async (request: any, reply: any ) => {
       const _id = request.params.id;
-      const body = JSON.parse(request.body);
-      const [,reservation] = await Reservations.update(body,{ where:{id: _id }});
+
+      // Check whether the reservation time overlaps
+      const overl = await overlaps(request.body);
+      if (overl){
+        request.log.error("The reservation time is overlapping");
+        return reply.send(400);
+      }
+
+      const [,reservation] = await Reservations.update(request.body,{ where:{id: _id }});
       
       return reply.send( JSON.stringify(reservation, null, 2));
       // return reply.send( Reservations);
